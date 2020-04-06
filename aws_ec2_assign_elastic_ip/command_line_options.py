@@ -56,6 +56,12 @@ PARSER.add_argument(
         '- 58.0.0.0/8\n'
         '- 123.213.0.0/16,58.0.0.0/8,195.234.023.0\n'
         '- 195.234.234.23,195.234.234.24\n'))
+PARSER.add_argument(
+    '--allow-reassociation',
+    action='store_true',
+    help=(
+        'Allow an Elastic IP already associated with another EC2 instance '
+        'to be reassociated.\n'))        
 ARGS = PARSER.parse_args()
 
 if ARGS.version:

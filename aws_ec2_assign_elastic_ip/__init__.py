@@ -56,7 +56,7 @@ def main():
         sys.exit(0)
 
     # Get an unassigned Elastic IP
-    address = _get_unassociated_address()
+    address = _get_unassociated_address(args.allow_reassociation)
 
     # Exit if there were no available Elastic IPs
     if not address:
@@ -66,10 +66,10 @@ def main():
     if args.dry_run:
         logger.info('Would assign IP {0}'.format(address['PublicIp']))
     else:
-        _assign_address(instance_id, address)
+        _assign_address(instance_id, address, args.allow_reassociation)
 
 
-def _assign_address(instance_id, address):
+def _assign_address(instance_id, address, allow_reassociation):
     """ Assign an address to the given instance ID
 
     :type instance_id: str
@@ -85,16 +85,17 @@ def _assign_address(instance_id, address):
     try:
         if address['Domain'] == 'standard':
         # EC2 classic association
-            connection.associate_address(
+            connection.associate_adidress(
                 InstanceId=instance_id,
                 PublicIp=address['PublicIp'],
-                AllowReassociation=False)
+                AllowReassociation=allow_reassociation)
         else:
         # EC2 VPC association
             connection.associate_address(
                 InstanceId=instance_id,
                 AllocationId=address['AllocationId'],
-                AllowReassociation=False)
+
+                AllowReassociation=allow_reassociation)
     except Exception as error:
         logger.error('Failed to associate {0} with {1}. Reason: {2}'.format(
             instance_id, address['PublicIp'], error))
@@ -104,7 +105,7 @@ def _assign_address(instance_id, address):
         address['PublicIp'], instance_id))
 
 
-def _get_unassociated_address():
+def _get_unassociated_address(allow_reassociation):
     """ Return the first unassociated EIP we can find
     Shuffles list before iterating to alleviate collisions
 
@@ -121,13 +122,13 @@ def _get_unassociated_address():
     random.shuffle(all_addresses)
     for address in all_addresses:
         # Check if the address is associated
-        if 'InstanceId' in address.keys():
+        if 'InstanceId' in address.keys() and not allow_reassociation:
             logger.debug('{0} is already associated with {1}'.format(
                 address['PublicIp'], address['InstanceId']))
             continue
 
         # Check if the address is attached to an ENI
-        if 'NetworkInterfaceId' in address.keys():
+        if 'NetworkInterfaceId' in address.keys() and not allow_reassociation:
             logger.debug('{0} is already attached to {1}'.format(
                 address['PublicIp'], address['NetworkInterfaceId']))
             continue
